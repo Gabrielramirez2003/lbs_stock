@@ -108,7 +108,7 @@ public class VentaService {
     public List<Venta> obtenerVentasPorTurno(int idTurno){
         List<Venta> ventas = ventaRepository.findAll()
                 .stream()
-                .filter(v -> v.getTurno().equals(idTurno))
+                .filter(v -> v.getTurno().getId() == idTurno)
                 .toList();
 
         return ventas;

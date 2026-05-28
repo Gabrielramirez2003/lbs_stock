@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -20,6 +21,16 @@ public class TurnoService {
 
 
     public Turno abrirTurno(){
+
+        Optional<Turno> turnoAbierto =
+                turnoRepository.findByEstado(EestadoTurno.ABIERTO);
+
+        if (turnoAbierto.isPresent()) {
+            throw new RuntimeException(
+                    "Ya existe un turno abierto. Debe cerrarlo antes de abrir otro."
+            );
+        }
+
         Turno turno = Turno.builder()
                 .fechaApertura(LocalDateTime.now())
                 .estado(EestadoTurno.ABIERTO)
@@ -32,7 +43,19 @@ public class TurnoService {
     public Turno cerrarTurno(int idTurno){
         Turno turno = buscarXid(idTurno);
 
+        if (turno.getEstado() == EestadoTurno.CERRADO) {
+            throw new RuntimeException("El turno ya está cerrado");
+        }
+
+        Double total = turno.getVentas()
+                .stream()
+                .mapToDouble(Venta::getTotal)
+                .sum();
+
+        turno.setFechaCierre(LocalDateTime.now());
+        turno.setTotalVendido(total);
         turno.setEstado(EestadoTurno.CERRADO);
+
         return turnoRepository.save(turno);
     }
 

@@ -2,8 +2,12 @@ package com.example.La_Buena_Suerte_Stock.Controller;
 
 import com.example.La_Buena_Suerte_Stock.DTO.VentaDTO;
 import com.example.La_Buena_Suerte_Stock.Model.Venta;
+import com.example.La_Buena_Suerte_Stock.Service.PdfService;
 import com.example.La_Buena_Suerte_Stock.Service.VentaService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -15,6 +19,7 @@ public class VentaController {
 
 
     private final VentaService ventaService;
+    private final PdfService pdfService;
 
     @PostMapping
     public Venta registrarVenta(@RequestBody VentaDTO venta) {
@@ -35,4 +40,6 @@ public class VentaController {
     public List<Venta> ventasPorTurno(@PathVariable int turnoId) {
         return ventaService.obtenerVentasPorTurno(turnoId);
     }
+
+
 }

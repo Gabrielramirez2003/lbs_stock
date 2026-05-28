@@ -58,4 +58,15 @@ public class ReporteController {
                 .body(pdf);
     }
 
+    @GetMapping("/venta/{ventaId}/recibo")
+    public ResponseEntity<byte[]> reciboVenta(@PathVariable int ventaId) {
+
+        byte[] pdf = pdfService.generarReciboVenta(ventaId);
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=recibo-venta.pdf")
+                .contentType(MediaType.APPLICATION_PDF)
+                .body(pdf);
+    }
+
 }
