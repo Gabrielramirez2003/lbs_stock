@@ -3,9 +3,7 @@ package com.example.La_Buena_Suerte_Stock.Model;
 import com.example.La_Buena_Suerte_Stock.Enums.EmetodoPago;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -14,19 +12,19 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 @Entity
-@Table(name="venta")
+@Table(name = "venta")
 public class Venta {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private int id;
+    private Long id;
 
-    @Column(name="fecha_hora")
     private LocalDateTime fechaHora;
 
     private double total;
+
+    @Enumerated(EnumType.STRING)
     private EmetodoPago metodoPago;
-
-
 
     @ManyToOne
     @JoinColumn(name = "turno_id")

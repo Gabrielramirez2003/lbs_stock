@@ -6,6 +6,6 @@ import lombok.Setter;
 @Getter
 @Setter
 public class DetalleDTO {
-    private Integer productoId;
+    private Long productoId;
     private Integer cantidad;
 }

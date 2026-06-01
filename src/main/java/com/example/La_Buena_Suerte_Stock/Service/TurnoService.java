@@ -1,5 +1,7 @@
 package com.example.La_Buena_Suerte_Stock.Service;
 
+
+import com.example.La_Buena_Suerte_Stock.DTO.ResponseDTO.TurnoResponseDTO;
 import com.example.La_Buena_Suerte_Stock.Enums.EestadoTurno;
 import com.example.La_Buena_Suerte_Stock.Enums.EmetodoPago;
 import com.example.La_Buena_Suerte_Stock.Model.Turno;
@@ -17,18 +19,24 @@ import java.util.stream.Collectors;
 @Service
 @AllArgsConstructor
 public class TurnoService {
+
     private final TurnoRepository turnoRepository;
 
+    private TurnoResponseDTO toResponse(Turno turno) {
+        return new TurnoResponseDTO(
+                turno.getId(),
+                turno.getFechaApertura(),
+                turno.getFechaCierre(),
+                turno.getEstado(),
+                turno.getTotalVendido()
+        );
+    }
 
-    public Turno abrirTurno(){
-
-        Optional<Turno> turnoAbierto =
-                turnoRepository.findByEstado(EestadoTurno.ABIERTO);
+    public TurnoResponseDTO abrirTurno() {
+        Optional<Turno> turnoAbierto = turnoRepository.findByEstado(EestadoTurno.ABIERTO);
 
         if (turnoAbierto.isPresent()) {
-            throw new RuntimeException(
-                    "Ya existe un turno abierto. Debe cerrarlo antes de abrir otro."
-            );
+            throw new RuntimeException("Ya existe un turno abierto. Debe cerrarlo antes de abrir otro.");
         }
 
         Turno turno = Turno.builder()
@@ -37,17 +45,17 @@ public class TurnoService {
                 .totalVendido(0.0)
                 .build();
 
-        return turnoRepository.save(turno);
+        return toResponse(turnoRepository.save(turno));
     }
 
-    public Turno cerrarTurno(int idTurno){
-        Turno turno = buscarXid(idTurno);
+    public TurnoResponseDTO cerrarTurno(Long idTurno) {
+        Turno turno = buscarEntidadPorId(idTurno);
 
         if (turno.getEstado() == EestadoTurno.CERRADO) {
             throw new RuntimeException("El turno ya está cerrado");
         }
 
-        Double total = turno.getVentas()
+        double total = turno.getVentas()
                 .stream()
                 .mapToDouble(Venta::getTotal)
                 .sum();
@@ -56,27 +64,32 @@ public class TurnoService {
         turno.setTotalVendido(total);
         turno.setEstado(EestadoTurno.CERRADO);
 
-        return turnoRepository.save(turno);
+        return toResponse(turnoRepository.save(turno));
     }
 
-    public Turno buscarXid(int idTurno){
+    public Turno buscarEntidadPorId(Long idTurno) {
         return turnoRepository.findById(idTurno)
                 .orElseThrow(() -> new RuntimeException("Turno no encontrado"));
     }
 
-    public Turno buscarTurnoAbierto() {
+    public TurnoResponseDTO buscarXid(Long idTurno) {
+        return toResponse(buscarEntidadPorId(idTurno));
+    }
+
+    public Turno buscarTurnoAbiertoEntidad() {
         return turnoRepository.findByEstado(EestadoTurno.ABIERTO)
-                .orElseThrow(() -> new RuntimeException("Turno no encontrado"));
+                .orElseThrow(() -> new RuntimeException("No hay turno abierto"));
     }
 
-
-    public List<Turno> mostrarTodos(){
-        return turnoRepository.findAll();
+    public List<TurnoResponseDTO> mostrarTodos() {
+        return turnoRepository.findAll()
+                .stream()
+                .map(this::toResponse)
+                .toList();
     }
 
-    public double calcularTotalTurno(int idTurno){
-        Turno turno = turnoRepository.findById(idTurno)
-                .orElseThrow(() -> new RuntimeException("Turno no encontrado"));
+    public double calcularTotalTurno(Long idTurno) {
+        Turno turno = buscarEntidadPorId(idTurno);
 
         return turno.getVentas()
                 .stream()
@@ -84,10 +97,8 @@ public class TurnoService {
                 .sum();
     }
 
-    public Map<EmetodoPago, Double> obtenerResumenMetodoPago(int turnoId) {
-
-        Turno turno = turnoRepository.findById(turnoId)
-                .orElseThrow(() -> new RuntimeException("Turno no encontrado"));
+    public Map<EmetodoPago, Double> obtenerResumenMetodoPago(Long turnoId) {
+        Turno turno = buscarEntidadPorId(turnoId);
 
         return turno.getVentas()
                 .stream()

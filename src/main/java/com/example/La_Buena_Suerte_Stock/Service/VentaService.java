@@ -1,14 +1,11 @@
 package com.example.La_Buena_Suerte_Stock.Service;
 
-import com.example.La_Buena_Suerte_Stock.DTO.DetalleDTO;
-import com.example.La_Buena_Suerte_Stock.DTO.VentaDTO;
+import com.example.La_Buena_Suerte_Stock.DTO.*;
+import com.example.La_Buena_Suerte_Stock.DTO.ResponseDTO.DetalleVentaResponseDTO;
+import com.example.La_Buena_Suerte_Stock.DTO.ResponseDTO.VentaResponseDTO;
 import com.example.La_Buena_Suerte_Stock.Enums.EmetodoPago;
-import com.example.La_Buena_Suerte_Stock.Model.DetalleVenta;
-import com.example.La_Buena_Suerte_Stock.Model.Producto;
-import com.example.La_Buena_Suerte_Stock.Model.Turno;
-import com.example.La_Buena_Suerte_Stock.Model.Venta;
+import com.example.La_Buena_Suerte_Stock.Model.*;
 import com.example.La_Buena_Suerte_Stock.Repository.ProductoRepository;
-import com.example.La_Buena_Suerte_Stock.Repository.TurnoRepository;
 import com.example.La_Buena_Suerte_Stock.Repository.VentaRepository;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -19,27 +16,34 @@ import java.util.List;
 @Service
 @AllArgsConstructor
 public class VentaService {
+
     private final VentaRepository ventaRepository;
     private final ProductoRepository productoRepository;
     private final TurnoService turnoService;
 
     private DetalleVenta toDetalleEntity(DetalleDTO dto) {
-
         Producto producto = productoRepository.findById(dto.getProductoId())
-                .orElseThrow(() ->
-                        new RuntimeException("Producto no encontrado"));
+                .orElseThrow(() -> new RuntimeException("Producto no encontrado"));
+
+        if (!producto.getActivo()) {
+            throw new RuntimeException("El producto está dado de baja: " + producto.getNombre());
+        }
+
+        if (producto.getStockActual() < dto.getCantidad()) {
+            throw new RuntimeException("Stock insuficiente para: " + producto.getNombre());
+        }
 
         DetalleVenta detalle = new DetalleVenta();
-
         detalle.setProducto(producto);
         detalle.setCantidad(dto.getCantidad());
         detalle.setPrecioUnitario(producto.getPrecio());
+        detalle.setSubtotal(producto.getPrecio() * dto.getCantidad());
 
         return detalle;
     }
-    private Venta DTOaEntidad(VentaDTO dto){
-        Venta venta = new Venta();
 
+    private Venta DTOaEntidad(VentaDTO dto) {
+        Venta venta = new Venta();
         venta.setMetodoPago(dto.getMetodoPago());
 
         List<DetalleVenta> detalles = dto.getDetalles()
@@ -48,81 +52,96 @@ public class VentaService {
                 .toList();
 
         venta.setDetalles(detalles);
-
         detalles.forEach(detalle -> detalle.setVenta(venta));
 
         return venta;
     }
-    public Venta registrarVenta(VentaDTO dto) {
 
+    private VentaResponseDTO toResponse(Venta venta) {
+        List<DetalleVentaResponseDTO> detalles = venta.getDetalles()
+                .stream()
+                .map(d -> new DetalleVentaResponseDTO(
+                        d.getProducto().getId(),
+                        d.getProducto().getNombre(),
+                        d.getCantidad(),
+                        d.getPrecioUnitario(),
+                        d.getSubtotal()
+                ))
+                .toList();
+
+        return new VentaResponseDTO(
+                venta.getId(),
+                venta.getFechaHora(),
+                venta.getTotal(),
+                venta.getMetodoPago(),
+                venta.getTurno().getId(),
+                detalles
+        );
+    }
+
+    public VentaResponseDTO registrarVenta(VentaDTO dto) {
         Venta venta = DTOaEntidad(dto);
 
-        Double total = calcularTotal(venta.getDetalles());
+        double total = calcularTotal(venta.getDetalles());
         venta.setTotal(total);
         venta.setFechaHora(LocalDateTime.now());
 
-        Turno turno = turnoService.buscarTurnoAbierto();
+        Turno turno = turnoService.buscarTurnoAbiertoEntidad();
         venta.setTurno(turno);
 
         descontarStock(venta.getDetalles());
 
-        return ventaRepository.save(venta);
+        return toResponse(ventaRepository.save(venta));
     }
 
-    public List<Venta> listarVentas() {
-        return ventaRepository.findAll();
+    public List<VentaResponseDTO> listarVentas() {
+        return ventaRepository.findAll()
+                .stream()
+                .map(this::toResponse)
+                .toList();
     }
 
-    public Venta buscarXid(int id){
+    public Venta buscarEntidadPorId(Long id) {
         return ventaRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("No existe el venta con el id: " + id));
+                .orElseThrow(() -> new RuntimeException("No existe la venta con el id: " + id));
     }
 
-    public void eliminarVenta(int id){
-        Venta venta  = buscarXid(id);
-        ventaRepository.delete(venta);
+    public VentaResponseDTO buscarXid(Long id) {
+        return toResponse(buscarEntidadPorId(id));
     }
 
-    public double calcularTotal(List<DetalleVenta> detalles){
+    public double calcularTotal(List<DetalleVenta> detalles) {
         return detalles.stream()
-                .mapToDouble(detalle ->
-                        detalle.getPrecioUnitario() * detalle.getCantidad())
+                .mapToDouble(DetalleVenta::getSubtotal)
                 .sum();
     }
 
-
     public void descontarStock(List<DetalleVenta> detalles) {
-
         for (DetalleVenta detalle : detalles) {
-
             Producto producto = detalle.getProducto();
 
-            producto.setStockActual(
-                    producto.getStockActual() - detalle.getCantidad()
-            );
+            if (producto.getStockActual() < detalle.getCantidad()) {
+                throw new RuntimeException("Stock insuficiente para: " + producto.getNombre());
+            }
 
+            producto.setStockActual(producto.getStockActual() - detalle.getCantidad());
             productoRepository.save(producto);
         }
     }
 
-    public List<Venta> obtenerVentasPorTurno(int idTurno){
-        List<Venta> ventas = ventaRepository.findAll()
+    public List<VentaResponseDTO> obtenerVentasPorTurno(Long idTurno) {
+        return ventaRepository.findAll()
                 .stream()
-                .filter(v -> v.getTurno().getId() == idTurno)
+                .filter(v -> v.getTurno().getId().equals(idTurno))
+                .map(this::toResponse)
                 .toList();
-
-        return ventas;
     }
 
-    public List<Venta> obtenerVentasPorMetodoPago(EmetodoPago metodoPago){
-        List<Venta> ventas = ventaRepository.findAll()
+    public List<VentaResponseDTO> obtenerVentasPorMetodoPago(EmetodoPago metodoPago) {
+        return ventaRepository.findAll()
                 .stream()
                 .filter(v -> v.getMetodoPago().equals(metodoPago))
+                .map(this::toResponse)
                 .toList();
-
-        return ventas;
     }
-
-
-
 }

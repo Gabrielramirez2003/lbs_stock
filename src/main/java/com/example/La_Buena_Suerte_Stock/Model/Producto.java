@@ -2,29 +2,33 @@ package com.example.La_Buena_Suerte_Stock.Model;
 
 import com.example.La_Buena_Suerte_Stock.Enums.Ecategoria;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import org.springframework.data.annotation.AccessType;
+import lombok.*;
 
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
 @Entity
-@Table(name="producto")
+@Table(name = "producto")
 public class Producto {
-    @Id
-    @GeneratedValue(strategy= GenerationType.IDENTITY)
-    private int id;
 
-    @Column(name="codigo")
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(name = "codigo", unique = true)
     private String codigo;
 
     private String nombre;
+
     private Integer stockActual;
-    @Column(name="precio")
+
+    @Column(name = "precio")
     private double precio;
 
-    private int stockMinimo;
+    private Integer stockMinimo;
+
+    @Enumerated(EnumType.STRING)
     private Ecategoria categoria;
+
+    private Boolean activo = true;
 }

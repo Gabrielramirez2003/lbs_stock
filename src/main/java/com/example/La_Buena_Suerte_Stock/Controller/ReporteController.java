@@ -24,12 +24,12 @@ public class ReporteController {
     private final PdfService pdfService;
 
     @GetMapping("/turno/{turnoId}")
-    public String reporteTurno(@PathVariable int turnoId) {
+    public String reporteTurno(@PathVariable Long turnoId) {
         return reporteService.generarReporteTurno(turnoId);
     }
 
     @GetMapping("/turnos/{turnoId}/resumen")
-    public String resumenVentas(@PathVariable int turnoId) {
+    public String resumenVentas(@PathVariable Long turnoId) {
         return reporteService.generarResumenVentas(turnoId);
     }
 
@@ -49,7 +49,7 @@ public class ReporteController {
     }
 
     @GetMapping("/turno/{turnoId}/pdf")
-    public ResponseEntity<byte[]> pdfTurno(@PathVariable int turnoId) {
+    public ResponseEntity<byte[]> pdfTurno(@PathVariable Long turnoId) {
         byte[] pdf = pdfService.generarPdfReporteTurno(turnoId);
 
         return ResponseEntity.ok()
@@ -59,7 +59,7 @@ public class ReporteController {
     }
 
     @GetMapping("/venta/{ventaId}/recibo")
-    public ResponseEntity<byte[]> reciboVenta(@PathVariable int ventaId) {
+    public ResponseEntity<byte[]> reciboVenta(@PathVariable Long ventaId) {
 
         byte[] pdf = pdfService.generarReciboVenta(ventaId);
 

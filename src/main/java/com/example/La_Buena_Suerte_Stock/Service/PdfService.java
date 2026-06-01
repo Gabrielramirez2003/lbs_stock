@@ -64,7 +64,7 @@ public class PdfService {
         }
     }
 
-    public byte[] generarPdfReporteTurno(int turnoId) {
+    public byte[] generarPdfReporteTurno(Long turnoId) {
 
         try {
             Turno turno = turnoRepository.findById(turnoId)
@@ -117,7 +117,7 @@ public class PdfService {
         }
     }
 
-    public byte[] generarReciboVenta(int ventaId) {
+    public byte[] generarReciboVenta(Long ventaId) {
 
         try {
 

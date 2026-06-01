@@ -1,7 +1,8 @@
 package com.example.La_Buena_Suerte_Stock.Controller;
 
 import com.example.La_Buena_Suerte_Stock.DTO.ProductoDTO;
-import com.example.La_Buena_Suerte_Stock.Model.Producto;
+
+import com.example.La_Buena_Suerte_Stock.DTO.ResponseDTO.ProductoResponseDTO;
 import com.example.La_Buena_Suerte_Stock.Service.ProductoService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -16,33 +17,32 @@ public class ProductoController {
     private final ProductoService productoService;
 
     @PostMapping
-    public Producto guardar(@RequestBody ProductoDTO dto) {
+    public ProductoResponseDTO guardar(@RequestBody ProductoDTO dto) {
         return productoService.createProducto(dto);
     }
 
     @GetMapping
-    public List<Producto> listar() {
-        return productoService.mostratTodos();
+    public List<ProductoResponseDTO> listar() {
+        return productoService.mostrarTodos();
     }
 
     @GetMapping("/{id}")
-    public Producto buscarPorId(@PathVariable int id) {
+    public ProductoResponseDTO buscarPorId(@PathVariable Long id) {
         return productoService.buscarXid(id);
     }
 
     @PutMapping("/{id}")
-    public Producto actualizar(@PathVariable int id, @RequestBody ProductoDTO dto) {
+    public ProductoResponseDTO actualizar(@PathVariable Long id, @RequestBody ProductoDTO dto) {
         return productoService.modificarProducto(id, dto);
     }
 
     @DeleteMapping("/{id}")
-    public void eliminar(@PathVariable int id) {
+    public void eliminar(@PathVariable Long id) {
         productoService.eliminarProducto(id);
     }
 
     @GetMapping("/faltantes")
-    public List<Producto> obtenerFaltantes() {
+    public List<ProductoResponseDTO> obtenerFaltantes() {
         return productoService.obtenerFaltantes();
     }
-
 }

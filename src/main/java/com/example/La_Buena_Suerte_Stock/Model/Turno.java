@@ -3,10 +3,7 @@ package com.example.La_Buena_Suerte_Stock.Model;
 import com.example.La_Buena_Suerte_Stock.Enums.EestadoTurno;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -16,14 +13,15 @@ import java.util.List;
 @NoArgsConstructor
 @Entity
 @Builder
-@Table(name="turno")
+@Table(name = "turno")
 public class Turno {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private int id;
+    private Long id;
 
     private LocalDateTime fechaApertura;
+
     private LocalDateTime fechaCierre;
 
     @Enumerated(EnumType.STRING)
@@ -34,5 +32,4 @@ public class Turno {
     @OneToMany(mappedBy = "turno")
     @JsonIgnore
     private List<Venta> ventas;
-
 }

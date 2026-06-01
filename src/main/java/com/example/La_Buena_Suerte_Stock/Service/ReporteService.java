@@ -21,7 +21,7 @@ public class ReporteService {
     private final TurnoRepository turnoRepository;
     private final ProductoRepository productoRepository;
     private final TurnoService turnoService;
-    public String generarReporteTurno(int turnoId) {
+    public String generarReporteTurno(Long turnoId) {
 
         Turno turno = turnoRepository.findById(turnoId)
                 .orElseThrow(() -> new RuntimeException("Turno no encontrado"));
@@ -60,7 +60,7 @@ public class ReporteService {
                 ));
     }
 
-    public String generarResumenVentas(int turnoId) {
+    public String generarResumenVentas(Long turnoId) {
 
         Map<EmetodoPago, Double> resumen =
                 turnoService.obtenerResumenMetodoPago(turnoId);
