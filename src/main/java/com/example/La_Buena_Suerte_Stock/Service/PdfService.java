@@ -67,10 +67,8 @@ public class PdfService {
     public byte[] generarPdfReporteTurno(int turnoId) {
 
         try {
-
             Turno turno = turnoRepository.findById(turnoId)
-                    .orElseThrow(() ->
-                            new RuntimeException("Turno no encontrado"));
+                    .orElseThrow(() -> new RuntimeException("Turno no encontrado"));
 
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
 
@@ -80,23 +78,34 @@ public class PdfService {
 
             document.add(new Paragraph("REPORTE DEL TURNO"));
 
-            document.add(new Paragraph(
-                    "Apertura: " + turno.getFechaApertura()
-            ));
+            document.add(new Paragraph("Turno N°: " + turno.getId()));
+            document.add(new Paragraph("Apertura: " + turno.getFechaApertura()));
+            document.add(new Paragraph("Cierre: " + turno.getFechaCierre()));
+            document.add(new Paragraph("Cantidad total de ventas: " + turno.getVentas().size()));
+            document.add(new Paragraph("Total vendido: $" + turno.getTotalVendido()));
 
-            document.add(new Paragraph(
-                    "Cierre: " + turno.getFechaCierre()
-            ));
-
-            document.add(new Paragraph("\nVENTAS\n"));
+            document.add(new Paragraph("\nDETALLE DE VENTAS\n"));
 
             for (Venta venta : turno.getVentas()) {
 
                 document.add(new Paragraph(
-                        "Venta ID: " + venta.getId()
+                        "------------------------------------------------------------"+ '\n' +
+                        "Venta N°: " + venta.getId()
                                 + " | Método: " + venta.getMetodoPago()
                                 + " | Total: $" + venta.getTotal()
                 ));
+
+                for (DetalleVenta detalle : venta.getDetalles()) {
+
+                    document.add(new Paragraph(
+                            "- " + detalle.getProducto().getNombre()
+                                    + " | Cant: " + detalle.getCantidad()
+                                    + " | Unit: $" + detalle.getPrecioUnitario()
+
+                    ));
+                }
+
+                document.add(new Paragraph(" "));
             }
 
             document.close();
@@ -104,8 +113,7 @@ public class PdfService {
             return baos.toByteArray();
 
         } catch (Exception e) {
-
-            throw new RuntimeException("Error al generar PDF");
+            throw new RuntimeException("Error al generar PDF del turno");
         }
     }
 

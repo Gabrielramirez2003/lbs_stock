@@ -27,6 +27,7 @@ public class Venta {
     private EmetodoPago metodoPago;
 
 
+
     @ManyToOne
     @JoinColumn(name = "turno_id")
     @JsonIgnore
