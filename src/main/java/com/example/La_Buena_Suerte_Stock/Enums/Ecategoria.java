@@ -5,10 +5,10 @@ public enum Ecategoria {
     KIOSCO,
     FIAMBRERIA,
     BAZAR,
-    BEBIDAS,
-    BIJOUTERI,
     VARIOS,
     LIBRERIA,
     JUGUETERIA,
-    PERFUMERIA
+    PERFUMERIA,
+    ALMACEN,
+
 }

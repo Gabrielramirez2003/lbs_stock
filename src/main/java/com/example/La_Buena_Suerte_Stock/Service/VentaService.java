@@ -6,6 +6,7 @@ import com.example.La_Buena_Suerte_Stock.DTO.ResponseDTO.VentaResponseDTO;
 import com.example.La_Buena_Suerte_Stock.Enums.EmetodoPago;
 import com.example.La_Buena_Suerte_Stock.Model.*;
 import com.example.La_Buena_Suerte_Stock.Repository.ProductoRepository;
+import com.example.La_Buena_Suerte_Stock.Repository.TurnoRepository;
 import com.example.La_Buena_Suerte_Stock.Repository.VentaRepository;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -20,6 +21,7 @@ public class VentaService {
     private final VentaRepository ventaRepository;
     private final ProductoRepository productoRepository;
     private final TurnoService turnoService;
+    private final TurnoRepository turnoRepository;
 
     private DetalleVenta toDetalleEntity(DetalleDTO dto) {
         Producto producto = productoRepository.findById(dto.getProductoId())
@@ -129,10 +131,12 @@ public class VentaService {
         }
     }
 
-    public List<VentaResponseDTO> obtenerVentasPorTurno(Long idTurno) {
-        return ventaRepository.findAll()
+    public List<VentaResponseDTO> obtenerVentasPorTurno(Long turnoId) {
+        Turno turno = turnoRepository.findById(turnoId)
+                .orElseThrow(() -> new RuntimeException("Turno no encontrado"));
+
+        return ventaRepository.findByTurno(turno)
                 .stream()
-                .filter(v -> v.getTurno().getId().equals(idTurno))
                 .map(this::toResponse)
                 .toList();
     }

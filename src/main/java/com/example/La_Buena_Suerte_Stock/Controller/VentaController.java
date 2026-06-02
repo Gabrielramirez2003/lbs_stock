@@ -5,6 +5,7 @@ import com.example.La_Buena_Suerte_Stock.DTO.VentaDTO;
 
 import com.example.La_Buena_Suerte_Stock.Service.VentaService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -32,7 +33,7 @@ public class VentaController {
     }
 
     @GetMapping("/turno/{turnoId}")
-    public List<VentaResponseDTO> ventasPorTurno(@PathVariable Long turnoId) {
-        return ventaService.obtenerVentasPorTurno(turnoId);
+    public ResponseEntity<List<VentaResponseDTO>> ventasPorTurno(@PathVariable Long turnoId) {
+        return ResponseEntity.ok(ventaService.obtenerVentasPorTurno(turnoId));
     }
 }

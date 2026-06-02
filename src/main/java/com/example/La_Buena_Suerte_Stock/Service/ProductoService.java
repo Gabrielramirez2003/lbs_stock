@@ -17,6 +17,7 @@ public class ProductoService {
     private final ProductoRepository productoRepository;
 
     private Producto DTOaEntidad(ProductoDTO dto) {
+
         Producto producto = new Producto();
         producto.setCodigo(dto.getCodigo());
         producto.setNombre(dto.getNombre());
@@ -42,6 +43,9 @@ public class ProductoService {
     }
 
     public ProductoResponseDTO createProducto(ProductoDTO dto) {
+        if (productoRepository.existsByCodigo(dto.getCodigo())) {
+            throw new RuntimeException("Ya existe un producto con el código: " + dto.getCodigo());
+        }
         Producto producto = DTOaEntidad(dto);
         return toResponse(productoRepository.save(producto));
     }
@@ -64,6 +68,13 @@ public class ProductoService {
 
     public ProductoResponseDTO modificarProducto(Long id, ProductoDTO dto) {
         Producto producto = buscarEntidadPorId(id);
+
+        productoRepository.findByCodigo(dto.getCodigo())
+                .ifPresent(productoExistente -> {
+                    if (!productoExistente.getId().equals(id)) {
+                        throw new RuntimeException("Ya existe otro producto con el código: " + dto.getCodigo());
+                    }
+                });
 
         producto.setCodigo(dto.getCodigo());
         producto.setNombre(dto.getNombre());
