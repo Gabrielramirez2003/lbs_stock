@@ -1,0 +1,979 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LBS Stock - Caja</title>
+<style>
+*{box-sizing:border-box;font-family:Arial,sans-serif}
+body{margin:0;background:#f3f4f6;color:#111827}
+header{position:sticky;top:0;z-index:10;background:#111827;color:white;padding:14px 22px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+h1{font-size:21px;margin:0}
+nav{display:flex;gap:8px;flex-wrap:wrap}
+nav button{width:auto;margin:0;background:#374151}
+main{max-width:1250px;margin:auto;padding:20px}
+.pantalla{display:none}.pantalla.activa{display:block}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:18px}
+.card{background:white;border-radius:14px;padding:18px;margin-bottom:18px;box-shadow:0 2px 10px #0001}
+input,select,button{width:100%;padding:10px;margin-top:6px;border-radius:8px;border:1px solid #d1d5db}
+button{border:none;background:#2563eb;color:white;font-weight:bold;cursor:pointer;margin-top:12px}
+button:hover{background:#1d4ed8}button:disabled{background:#9ca3af}
+.btn-success{background:#16a34a}.btn-danger{background:#dc2626}.btn-secondary{background:#4b5563}
+.estado,.mensaje{padding:12px 14px;border-radius:10px;font-weight:bold;margin-bottom:18px}
+.estado.ok,.mensaje.ok{background:#dcfce7;color:#166534}.estado.error,.mensaje.error{background:#fee2e2;color:#991b1b}
+.mensaje{display:none}.mensaje.ok,.mensaje.error{display:block}
+table{width:100%;border-collapse:collapse;margin-top:12px;font-size:14px}
+th,td{padding:9px;border-bottom:1px solid #e5e7eb;text-align:left}th{background:#f9fafb}
+td button{margin:0;padding:7px 9px}
+.total-box{margin-top:16px;padding:16px;border-radius:12px;background:#eff6ff;text-align:right;font-size:26px;font-weight:bold;color:#1d4ed8}
+.acciones{display:flex;gap:10px;flex-wrap:wrap}.acciones button{flex:1}
+.box{border:1px solid #e5e7eb;border-radius:10px;padding:12px;margin-top:12px}
+.metricas{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
+.metrica{background:#f9fafb;border-radius:12px;padding:14px;border:1px solid #e5e7eb}
+.metrica span{display:block;color:#6b7280;font-size:13px}.metrica strong{display:block;font-size:24px;margin-top:6px}
+pre{background:#111827;color:#d1fae5;padding:14px;border-radius:10px;overflow-x:auto;max-height:320px}
+label{display:block;margin-top:10px;font-weight:bold;font-size:14px}
+</style>
+</head>
+<body>
+
+<header>
+<h1>La Buena Suerte - Caja</h1>
+<nav>
+<button id="btnNavAbrirTurno" onclick="mostrarPantalla('abrirTurno')">Abrir turno</button>
+<button id="btnNavVenta" onclick="mostrarPantalla('venta')" style="display:none;">Registrar venta</button>
+<button onclick="mostrarPantalla('crearProducto')">Crear producto</button>
+<button onclick="mostrarPantalla('modificarProducto')">Modificar producto</button>
+<button onclick="mostrarPantalla('resumenRapido')">Resumen rápido</button>
+<button onclick="mostrarPantalla('reportes')">Reportes</button>
+<button id="btnNavCerrarTurno" class="btn-danger" onclick="cerrarTurno()" style="display:none;">Cerrar turno</button>
+</nav>
+</header>
+
+<main>
+<div id="estadoTurno" class="estado error">Sin turno abierto</div>
+<div id="mensaje" class="mensaje"></div>
+
+<section id="abrirTurno" class="pantalla activa">
+<div class="card">
+<h2>Abrir turno</h2>
+<p>Para empezar a vender, primero tenés que abrir la caja.</p>
+<button class="btn-success" onclick="iniciarCaja()">Abrir turno</button>
+</div>
+</section>
+
+<section id="venta" class="pantalla">
+<div class="grid">
+<div class="card">
+<h2>Buscar producto</h2>
+<label>Nombre o código/código de barras</label>
+<input id="buscadorProducto" placeholder="Escaneá o escribí nombre/código" oninput="buscarProductosVenta()" onkeydown="buscarPorEnter(event)">
+<table>
+<thead>
+<tr><th>Código</th><th>Producto</th><th>Precio</th><th>Stock</th><th></th></tr>
+</thead>
+<tbody id="tablaBusquedaVenta"></tbody>
+</table>
+</div>
+
+<div class="card">
+<h2>Venta actual</h2>
+<table>
+<thead>
+<tr><th>Producto</th><th>Cant.</th><th>Unit.</th><th>Subtotal</th><th></th></tr>
+</thead>
+<tbody id="tablaVentaActual"></tbody>
+</table>
+<div class="total-box">Total: $<span id="totalVenta">0</span></div>
+<div class="acciones">
+<button class="btn-secondary" onclick="cancelarVenta()">Cancelar venta</button>
+<button class="btn-success" id="btnFinalizarVenta" onclick="irAPago()" disabled>Finalizar venta</button>
+</div>
+</div>
+</div>
+</section>
+
+<section id="pago" class="pantalla">
+<div class="card">
+<h2>Seleccionar método de pago</h2>
+<p>Total a cobrar: <strong>$<span id="totalPago">0</span></strong></p>
+
+<label>Método de pago</label>
+<select id="metodoPago" onchange="validarMetodoPago()">
+<option value="">Seleccionar...</option>
+<option value="EFECTIVO">EFECTIVO</option>
+<option value="DEBITO">DEBITO</option>
+<option value="CREDITO">CREDITO</option>
+<option value="TRANSFERENCIA">TRANSFERENCIA</option>
+<option value="MERCADO_PAGO">MERCADO_PAGO</option>
+</select>
+
+<div class="acciones">
+<button class="btn-secondary" onclick="mostrarPantalla('venta')">Volver</button>
+<button class="btn-success" id="btnRegistrarVenta" onclick="registrarVenta()" disabled>Registrar venta</button>
+</div>
+</div>
+</section>
+
+<section id="crearProducto" class="pantalla">
+<div class="grid">
+<div class="card">
+<h2>Crear producto</h2>
+
+<label>Código</label>
+<input id="crearCodigo">
+
+<label>Nombre</label>
+<input id="crearNombre">
+
+<label>Precio</label>
+<input id="crearPrecio" type="number">
+
+<label>Stock actual</label>
+<input id="crearStockActual" type="number">
+
+<label>Stock mínimo</label>
+<input id="crearStockMinimo" type="number" value="5">
+
+<label>Categoría</label>
+<select id="crearCategoria">
+  <option value="">Seleccionar categoría...</option>
+  <option value="ALMACEN">ALMACEN</option>
+  <option value="BEBIDAS">BEBIDAS</option>
+  <option value="LIMPIEZA">LIMPIEZA</option>
+  <option value="FIAMBRERIA">FIAMBRERIA</option>
+  <option value="BAZAR">BAZAR</option>
+  <option value="BAZAR">JUGUETERIA</option>
+  <option value="KIOSCO">KIOSCO</option>
+  <option value="BAZAR">LIBRERIA</option>
+  <option value="BAZAR">VARIOS</option>
+</select>
+
+<button class="btn-success" onclick="crearProducto()">Guardar producto</button>
+</div>
+
+<div class="card">
+<h2>Productos cargados</h2>
+<button class="btn-secondary" onclick="cargarProductos()">Actualizar</button>
+<table>
+<thead>
+<tr><th>ID</th><th>Código</th><th>Nombre</th><th>Precio</th><th>Stock</th><th>Categoría</th></tr>
+</thead>
+<tbody id="tablaProductos"></tbody>
+</table>
+</div>
+</div>
+</section>
+
+<section id="modificarProducto" class="pantalla">
+<div class="grid">
+<div class="card">
+<h2>Buscar producto para modificar</h2>
+
+<label>Buscar por código o nombre</label>
+<input id="buscadorModificar" oninput="buscarProductosModificar()">
+
+<table>
+<thead>
+<tr><th>Código</th><th>Producto</th><th>Stock</th><th></th></tr>
+</thead>
+<tbody id="tablaModificar"></tbody>
+</table>
+</div>
+
+<div class="card">
+<h2>Editar producto</h2>
+
+<input type="hidden" id="editarId">
+
+<label>Código</label>
+<input id="editarCodigo">
+
+<label>Nombre</label>
+<input id="editarNombre">
+
+<label>Precio</label>
+<input id="editarPrecio" type="number">
+
+<label>Stock actual</label>
+<input id="editarStockActual" type="number">
+
+<label>Stock mínimo</label>
+<input id="editarStockMinimo" type="number">
+
+<label>Categoría</label>
+<select id="editarCategoria">
+  <option value="">Seleccionar categoría...</option>
+  <option value="ALMACEN">ALMACEN</option>
+  <option value="BEBIDAS">BEBIDAS</option>
+  <option value="LIMPIEZA">LIMPIEZA</option>
+  <option value="FIAMBRERIA">FIAMBRERIA</option>
+  <option value="BAZAR">BAZAR</option>
+  <option value="KIOSCO">KIOSCO</option>
+  <option value="BAZAR">LIBRERIA</option>
+  <option value="BAZAR">JUGUETERIA</option>
+  <option value="BAZAR">VARIOS</option>
+</select>
+
+<div class="acciones">
+<button class="btn-success" onclick="guardarCambiosProducto()">Guardar cambios</button>
+<button class="btn-danger" onclick="eliminarProducto()">Eliminar producto</button>
+</div>
+</div>
+</div>
+</section>
+
+<section id="resumenRapido" class="pantalla">
+<div class="card">
+<h2>Resumen rápido</h2>
+<button onclick="cargarResumenRapido()">Actualizar resumen</button>
+
+<div class="metricas">
+<div class="metrica">
+<span>Total vendido</span>
+<strong>$<span id="resumenTotalVendido">0</span></strong>
+</div>
+
+<div class="metrica">
+<span>Cantidad de ventas</span>
+<strong id="resumenCantidadVentas">0</strong>
+</div>
+
+<div class="metrica">
+<span>Productos faltantes</span>
+<strong id="resumenCantidadFaltantes">0</strong>
+</div>
+</div>
+</div>
+
+<div class="grid">
+<div class="card">
+<h3>Por método de pago</h3>
+<div id="resumenMetodoPago">Sin datos.</div>
+</div>
+
+<div class="card">
+<h3>Faltantes</h3>
+<div id="resumenFaltantes">Sin datos.</div>
+</div>
+</div>
+</section>
+
+<section id="reportes" class="pantalla">
+<div class="grid">
+<div class="card">
+<h2>Reporte de faltantes</h2>
+<button onclick="cargarFaltantes()">Ver faltantes</button>
+<button onclick="descargarPdfFaltantes()">Descargar PDF faltantes</button>
+<div id="faltantesAgrupados"></div>
+</div>
+
+<div class="card">
+<h2>Reporte de turnos</h2>
+<button onclick="cargarTurnos()">Cargar turnos</button>
+
+<label>Seleccionar turno</label>
+<select id="selectTurnos" onchange="cargarDetalleTurno()">
+<option value="">Seleccionar turno...</option>
+</select>
+
+<button onclick="descargarPdfTurno()">Descargar PDF del turno</button>
+
+<h3>Resumen por método de pago</h3>
+<div id="reporteResumenMetodoPago">Sin datos.</div>
+</div>
+</div>
+
+<div class="card">
+<h2>Ventas del turno seleccionado</h2>
+<div id="ventasTurno"></div>
+</div>
+</section>
+</main>
+
+<script>
+const API="http://localhost:8080";
+let turnoActual=null;
+let productos=[];
+let ventaActual=[];
+let turnos=[];
+
+function mostrarPantalla(id){
+ document.querySelectorAll(".pantalla").forEach(p=>p.classList.remove("activa"));
+ document.getElementById(id).classList.add("activa");
+
+ if(["venta","crearProducto","modificarProducto"].includes(id)){
+  cargarProductos();
+ }
+
+ if(id==="resumenRapido"){
+  cargarResumenRapido();
+ }
+
+ if(id==="reportes"){
+  cargarTurnos();
+  cargarFaltantes();
+ }
+}
+
+function mostrarMensaje(texto,tipo="ok"){
+ const m=document.getElementById("mensaje");
+ m.textContent=texto;
+ m.className="mensaje "+tipo;
+
+ setTimeout(()=>{
+  m.className="mensaje";
+  m.textContent="";
+ },3500);
+}
+
+function limpiarError(error){
+ try{
+  const json=JSON.parse(error);
+  return json.mensaje || json.error || error;
+ }catch{
+  return error;
+ }
+}
+
+async function request(url,options={}){
+ const res=await fetch(API+url,{
+  headers:{"Content-Type":"application/json"},
+  ...options
+ });
+
+ if(!res.ok){
+  throw new Error(await res.text() || "Error HTTP "+res.status);
+ }
+
+ const ct=res.headers.get("content-type") || "";
+ return ct.includes("application/json") ? res.json() : res.text();
+}
+
+function formatearFecha(f){
+ return f ? String(f).replace("T"," ").substring(0,19) : "-";
+}
+
+function actualizarEstadoTurno(){
+ const e=document.getElementById("estadoTurno");
+ const btnAbrir=document.getElementById("btnNavAbrirTurno");
+ const btnVenta=document.getElementById("btnNavVenta");
+ const btnCerrar=document.getElementById("btnNavCerrarTurno");
+
+ if(turnoActual){
+  e.className="estado ok";
+  e.textContent=`Turno abierto #${turnoActual.id} | Apertura: ${formatearFecha(turnoActual.fechaApertura)}`;
+
+  btnAbrir.style.display="none";
+  btnVenta.style.display="inline-block";
+  btnCerrar.style.display="inline-block";
+
+  mostrarPantalla("venta");
+ }else{
+  e.className="estado error";
+  e.textContent="Sin turno abierto";
+
+  btnAbrir.style.display="inline-block";
+  btnVenta.style.display="none";
+  btnCerrar.style.display="none";
+
+  mostrarPantalla("abrirTurno");
+ }
+}
+
+async function detectarTurnoAbierto(){
+ try{
+  turnos=await request("/turnos");
+  turnoActual=turnos.find(t=>t.estado==="ABIERTO") || null;
+  actualizarEstadoTurno();
+ }catch(e){
+  turnoActual=null;
+  actualizarEstadoTurno();
+ }
+}
+
+async function iniciarCaja(){
+ try{
+  await detectarTurnoAbierto();
+
+  if(turnoActual){
+   mostrarMensaje("Ya hay un turno abierto. No se puede abrir otro.","error");
+   return;
+  }
+
+  turnoActual=await request("/turnos/abrir",{method:"POST"});
+
+  actualizarEstadoTurno();
+  mostrarMensaje("Turno abierto correctamente");
+  await cargarProductos();
+
+ }catch(e){
+  mostrarMensaje("No se pudo abrir el turno: " + limpiarError(e.message),"error");
+ }
+}
+
+async function cerrarTurno(){
+ try{
+  if(!turnoActual){
+   mostrarMensaje("No hay turno abierto para cerrar","error");
+   return;
+  }
+
+  await request(`/turnos/${turnoActual.id}/cerrar`,{method:"PUT"});
+
+  ventaActual=[];
+  renderVenta();
+
+  turnoActual=null;
+  actualizarEstadoTurno();
+
+  mostrarMensaje("Turno cerrado correctamente");
+
+ }catch(e){
+  mostrarMensaje("No se pudo cerrar el turno: " + limpiarError(e.message),"error");
+ }
+}
+
+async function cargarProductos(){
+ try{
+  productos=await request("/productos");
+  renderTablaProductos();
+  buscarProductosVenta();
+  buscarProductosModificar();
+ }catch(e){
+  mostrarMensaje("No se pudieron cargar los productos: " + limpiarError(e.message),"error");
+ }
+}
+
+function renderTablaProductos(){
+ const tb=document.getElementById("tablaProductos");
+ if(!tb)return;
+
+ tb.innerHTML="";
+
+ productos.forEach(p=>{
+  tb.innerHTML+=`
+  <tr>
+   <td>${p.id ?? ""}</td>
+   <td>${p.codigo ?? ""}</td>
+   <td>${p.nombre ?? ""}</td>
+   <td>$${p.precio ?? 0}</td>
+   <td>${p.stockActual ?? 0}</td>
+   <td>${p.categoria ?? ""}</td>
+  </tr>`;
+ });
+}
+
+async function crearProducto(){
+ try{
+  const p={
+   codigo:crearCodigo.value.trim(),
+   nombre:crearNombre.value.trim(),
+   precio:Number(crearPrecio.value),
+   stockActual:Number(crearStockActual.value),
+   stockMinimo:Number(crearStockMinimo.value),
+   categoria:crearCategoria.value.trim()
+  };
+
+  await request("/productos",{
+   method:"POST",
+   body:JSON.stringify(p)
+  });
+
+  crearCodigo.value="";
+  crearNombre.value="";
+  crearPrecio.value="";
+  crearStockActual.value="";
+  crearCategoria.value="";
+  crearStockMinimo.value=5;
+
+  await cargarProductos();
+  mostrarMensaje("Producto creado correctamente");
+
+ }catch(e){
+  mostrarMensaje("No se pudo crear el producto: " + limpiarError(e.message),"error");
+ }
+}
+
+function buscarProductosVenta(){
+ const tb=document.getElementById("tablaBusquedaVenta");
+ if(!tb)return;
+
+ const t=buscadorProducto.value.trim().toLowerCase();
+ tb.innerHTML="";
+
+ if(!t)return;
+
+ productos
+ .filter(p =>
+  String(p.codigo ?? "").toLowerCase().includes(t) ||
+  String(p.nombre ?? "").toLowerCase().includes(t)
+ )
+ .forEach(p=>{
+  tb.innerHTML+=`
+  <tr>
+   <td>${p.codigo ?? ""}</td>
+   <td>${p.nombre ?? ""}</td>
+   <td>$${p.precio ?? 0}</td>
+   <td>${p.stockActual ?? 0}</td>
+   <td><button onclick="agregarProductoVenta(${p.id})">Agregar</button></td>
+  </tr>`;
+ });
+}
+
+function buscarPorEnter(ev){
+ if(ev.key!=="Enter")return;
+
+ ev.preventDefault();
+
+ const t=buscadorProducto.value.trim().toLowerCase();
+ if(!t)return;
+
+ const exacto=productos.find(p=>String(p.codigo ?? "").toLowerCase()===t);
+
+ if(exacto){
+  agregarProductoVenta(exacto.id);
+  buscadorProducto.value="";
+  buscarProductosVenta();
+  return;
+ }
+
+ const primero=productos.find(p=>String(p.nombre ?? "").toLowerCase().includes(t));
+
+ if(primero){
+  agregarProductoVenta(primero.id);
+ }
+}
+
+function agregarProductoVenta(id){
+ if(!turnoActual){
+  mostrarMensaje("Primero tenés que abrir turno","error");
+  return;
+ }
+
+ const p=productos.find(x=>Number(x.id)===Number(id));
+ if(!p)return;
+
+ if(p.stockActual<=0){
+  mostrarMensaje("No hay stock disponible","error");
+  return;
+ }
+
+ const item=ventaActual.find(i=>Number(i.productoId)===Number(id));
+
+ if(item){
+  if(item.cantidad+1>p.stockActual){
+   mostrarMensaje("No hay stock suficiente","error");
+   return;
+  }
+
+  item.cantidad++;
+  item.subtotal=item.cantidad*item.precioUnitario;
+ }else{
+  ventaActual.push({
+   productoId:p.id,
+   codigo:p.codigo,
+   nombre:p.nombre,
+   cantidad:1,
+   precioUnitario:p.precio,
+   subtotal:p.precio
+  });
+ }
+
+ renderVenta();
+}
+
+function renderVenta(){
+ tablaVentaActual.innerHTML="";
+
+ ventaActual.forEach((i,idx)=>{
+  tablaVentaActual.innerHTML+=`
+  <tr>
+   <td>${i.nombre}</td>
+   <td><input type="number" min="1" value="${i.cantidad}" onchange="cambiarCantidad(${idx},this.value)"></td>
+   <td>$${i.precioUnitario}</td>
+   <td>$${i.subtotal}</td>
+   <td><button class="btn-danger" onclick="eliminarItemVenta(${idx})">X</button></td>
+  </tr>`;
+ });
+
+ totalVenta.textContent=calcularTotalVenta();
+ totalPago.textContent=calcularTotalVenta();
+ btnFinalizarVenta.disabled=ventaActual.length===0;
+}
+
+function cambiarCantidad(idx,c){
+ const cant=Number(c);
+ const item=ventaActual[idx];
+
+ if(cant<=0){
+  eliminarItemVenta(idx);
+  return;
+ }
+
+ const p=productos.find(x=>Number(x.id)===Number(item.productoId));
+
+ if(p && cant>p.stockActual){
+  mostrarMensaje("No hay stock suficiente","error");
+  renderVenta();
+  return;
+ }
+
+ item.cantidad=cant;
+ item.subtotal=item.cantidad*item.precioUnitario;
+
+ renderVenta();
+}
+
+function eliminarItemVenta(idx){
+ ventaActual.splice(idx,1);
+ renderVenta();
+}
+
+function calcularTotalVenta(){
+ return ventaActual.reduce((t,i)=>t+i.subtotal,0);
+}
+
+function cancelarVenta(){
+ ventaActual=[];
+ renderVenta();
+ mostrarMensaje("Venta cancelada");
+}
+
+function irAPago(){
+ if(!ventaActual.length)return;
+
+ metodoPago.value="";
+ validarMetodoPago();
+ mostrarPantalla("pago");
+}
+
+function validarMetodoPago(){
+ btnRegistrarVenta.disabled=!metodoPago.value;
+}
+
+async function registrarVenta(){
+ try{
+  if(!metodoPago.value){
+   mostrarMensaje("Seleccioná un método de pago","error");
+   return;
+  }
+
+  const dto={
+   metodoPago:metodoPago.value,
+   detalles:ventaActual.map(i=>({
+    productoId:i.productoId,
+    cantidad:i.cantidad
+   }))
+  };
+
+  const guardada=await request("/ventas",{
+   method:"POST",
+   body:JSON.stringify(dto)
+  });
+
+  if(guardada?.id){
+   window.open(API+`/reportes/venta/${guardada.id}/recibo`,"_blank");
+  }
+
+  ventaActual=[];
+  renderVenta();
+
+  await cargarProductos();
+
+  mostrarMensaje("Venta registrada correctamente");
+  mostrarPantalla("venta");
+
+ }catch(e){
+  mostrarMensaje("No se pudo registrar la venta: " + limpiarError(e.message),"error");
+ }
+}
+
+function buscarProductosModificar(){
+ const tb=document.getElementById("tablaModificar");
+ if(!tb)return;
+
+ const t=buscadorModificar.value.trim().toLowerCase();
+ tb.innerHTML="";
+
+ if(!t)return;
+
+ productos
+ .filter(p =>
+  String(p.codigo ?? "").toLowerCase().includes(t) ||
+  String(p.nombre ?? "").toLowerCase().includes(t)
+ )
+ .forEach(p=>{
+  tb.innerHTML+=`
+  <tr>
+   <td>${p.codigo ?? ""}</td>
+   <td>${p.nombre ?? ""}</td>
+   <td>${p.stockActual ?? 0}</td>
+   <td><button onclick="seleccionarProductoEditar(${p.id})">Seleccionar</button></td>
+  </tr>`;
+ });
+}
+
+function seleccionarProductoEditar(id){
+ const p=productos.find(x=>Number(x.id)===Number(id));
+ if(!p)return;
+
+ editarId.value=p.id;
+ editarCodigo.value=p.codigo ?? "";
+ editarNombre.value=p.nombre ?? "";
+ editarPrecio.value=p.precio ?? 0;
+ editarStockActual.value=p.stockActual ?? 0;
+ editarStockMinimo.value=p.stockMinimo ?? 5;
+ editarCategoria.value=p.categoria ?? "";
+}
+
+async function guardarCambiosProducto(){
+ try{
+  const id=editarId.value;
+
+  if(!id){
+   mostrarMensaje("Primero seleccioná un producto","error");
+   return;
+  }
+
+  const p={
+   codigo:editarCodigo.value.trim(),
+   nombre:editarNombre.value.trim(),
+   precio:Number(editarPrecio.value),
+   stockActual:Number(editarStockActual.value),
+   stockMinimo:Number(editarStockMinimo.value),
+   categoria:editarCategoria.value.trim()
+  };
+
+  await request(`/productos/${id}`,{
+   method:"PUT",
+   body:JSON.stringify(p)
+  });
+
+  await cargarProductos();
+  mostrarMensaje("Producto actualizado correctamente");
+
+ }catch(e){
+  mostrarMensaje("No se pudo actualizar el producto: " + limpiarError(e.message),"error");
+ }
+}
+
+async function eliminarProducto(){
+ try{
+  const id=editarId.value;
+
+  if(!id){
+   mostrarMensaje("Primero seleccioná un producto","error");
+   return;
+  }
+
+  if(!confirm("¿Seguro que querés eliminar este producto?"))return;
+
+  await request(`/productos/${id}`,{method:"DELETE"});
+
+  editarId.value="";
+  editarCodigo.value="";
+  editarNombre.value="";
+  editarPrecio.value="";
+  editarStockActual.value="";
+  editarStockMinimo.value="";
+  editarCategoria.value="";
+
+  await cargarProductos();
+
+  mostrarMensaje("Producto eliminado correctamente");
+
+ }catch(e){
+  mostrarMensaje("No se pudo eliminar el producto: " + limpiarError(e.message),"error");
+ }
+}
+
+async function cargarResumenRapido(){
+ try{
+  if(!turnoActual){
+   resumenTotalVendido.textContent="0";
+   resumenCantidadVentas.textContent="0";
+   resumenCantidadFaltantes.textContent="0";
+   resumenMetodoPago.innerHTML="No hay turno abierto.";
+   resumenFaltantes.innerHTML="No hay turno abierto.";
+   return;
+  }
+
+  const pagos=await request(`/turnos/${turnoActual.id}/resumen-pagos`);
+  const ventas=await request(`/ventas/turno/${turnoActual.id}`);
+  const faltantes=await request("/reportes/faltantes");
+
+  resumenTotalVendido.textContent=Object.values(pagos).reduce((t,v)=>t+Number(v),0);
+  resumenCantidadVentas.textContent=ventas.length;
+  resumenCantidadFaltantes.textContent=faltantes.length;
+
+  renderResumenMetodoPago("resumenMetodoPago",pagos);
+  renderFaltantesEn("resumenFaltantes",faltantes);
+
+ }catch(e){
+  mostrarMensaje("No se pudo cargar el resumen: " + limpiarError(e.message),"error");
+ }
+}
+
+function renderResumenMetodoPago(id,pagos){
+ const c=document.getElementById(id);
+ c.innerHTML="";
+
+ if(!pagos || Object.keys(pagos).length===0){
+  c.innerHTML="<p>Sin ventas registradas.</p>";
+  return;
+ }
+
+ let html="<table><thead><tr><th>Método</th><th>Total</th></tr></thead><tbody>";
+
+ Object.entries(pagos).forEach(([metodo,total])=>{
+  html+=`<tr><td>${metodo}</td><td>$${total}</td></tr>`;
+ });
+
+ html+="</tbody></table>";
+ c.innerHTML=html;
+}
+
+async function cargarFaltantes(){
+ try{
+  const faltantes=await request("/reportes/faltantes");
+  renderFaltantesEn("faltantesAgrupados",faltantes);
+ }catch(e){
+  faltantesAgrupados.innerHTML=limpiarError(e.message);
+ }
+}
+
+function renderFaltantesEn(id,faltantes){
+ const c=document.getElementById(id);
+ c.innerHTML="";
+
+ if(!faltantes?.length){
+  c.innerHTML="<p>No hay productos faltantes.</p>";
+  return;
+ }
+
+ const g=faltantes.reduce((a,p)=>{
+  const cat=p.categoria || "SIN_CATEGORIA";
+  (a[cat] ??= []).push(p);
+  return a;
+ },{});
+
+ Object.keys(g).forEach(cat=>{
+  const div=document.createElement("div");
+  div.className="box";
+  div.innerHTML=`<h3>${cat}</h3>`;
+
+  const ul=document.createElement("ul");
+
+  g[cat].forEach(p=>{
+   const li=document.createElement("li");
+   li.textContent=`${p.nombre} | Código: ${p.codigo} | Stock: ${p.stockActual}`;
+   ul.appendChild(li);
+  });
+
+  div.appendChild(ul);
+  c.appendChild(div);
+ });
+}
+
+function descargarPdfFaltantes(){
+ window.open(API+"/reportes/faltantes/pdf","_blank");
+}
+
+async function cargarTurnos(){
+ try{
+  turnos=await request("/turnos");
+
+  selectTurnos.innerHTML='<option value="">Seleccionar turno...</option>';
+
+  turnos.forEach(t=>{
+   selectTurnos.innerHTML+=`
+   <option value="${t.id}">
+    Turno #${t.id} | ${t.estado} | ${formatearFecha(t.fechaApertura)}
+   </option>`;
+  });
+
+ }catch(e){
+  mostrarMensaje("No se pudieron cargar los turnos: " + limpiarError(e.message),"error");
+ }
+}
+
+async function cargarDetalleTurno(){
+ const id=selectTurnos.value;
+
+ if(!id)return;
+
+ try{
+  const pagos=await request(`/turnos/${id}/resumen-pagos`);
+  const ventas=await request(`/ventas/turno/${id}`);
+
+  renderResumenMetodoPago("reporteResumenMetodoPago",pagos);
+  renderVentasTurno(ventas);
+
+ }catch(e){
+  ventasTurno.innerHTML=limpiarError(e.message);
+ }
+}
+
+function renderVentasTurno(ventas){
+ ventasTurno.innerHTML="";
+
+ if(!ventas?.length){
+  ventasTurno.innerHTML="<p>Este turno no tiene ventas.</p>";
+  return;
+ }
+
+ ventas.forEach(v=>{
+  const div=document.createElement("div");
+  div.className="box";
+
+  const det=(v.detalles || []).map(d=>`
+   <tr>
+    <td>${d.productoNombre ?? d.producto?.nombre ?? "Producto"}</td>
+    <td>${d.cantidad}</td>
+    <td>$${d.precioUnitario}</td>
+    <td>$${d.subtotal}</td>
+   </tr>
+  `).join("");
+
+  div.innerHTML=`
+   <h3>Venta #${v.id} - ${v.metodoPago}</h3>
+   <p>Fecha: ${formatearFecha(v.fechaHora)} | Total: <strong>$${v.total}</strong></p>
+   <table>
+    <thead>
+     <tr>
+      <th>Producto</th>
+      <th>Cantidad</th>
+      <th>Precio unit.</th>
+      <th>Subtotal</th>
+     </tr>
+    </thead>
+    <tbody>${det}</tbody>
+   </table>
+  `;
+
+  ventasTurno.appendChild(div);
+ });
+}
+
+function descargarPdfTurno(){
+ const id=selectTurnos.value || turnoActual?.id;
+
+ if(!id){
+  mostrarMensaje("Seleccioná un turno","error");
+  return;
+ }
+
+ window.open(API+`/reportes/turno/${id}/pdf`,"_blank");
+}
+
+async function iniciarApp(){
+ await detectarTurnoAbierto();
+ await cargarProductos();
+}
+
+iniciarApp();
+</script>
+
+</body>
+</html>
